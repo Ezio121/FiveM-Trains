@@ -1,9 +1,3 @@
---===================================================
--- Variables used BY the script, do NOT modify them
--- unless you know what you are doing!
--- Modifying these might/will result in undesired
--- behaviour and/or script breaking!
---===================================================
 local IsPlayerNearMetro = false
 local IsPlayerInMetro = false
 local PlayerHasMetroTicket = false
@@ -78,8 +72,6 @@ local XNLMetroScanPoints = {
 	{XNLStationid=9, x=-1103.7401123047, y=-2740.369140625, z=-7.4101300239563}
 }
 
--- These are the 'exit points' to where the player is teleported with the short fade-out / fade-in
--- NOTE: XNLStationid is NOT used in this table, it's just here for user refrence!
 local XNLMetroEXITPoints = {
 	{XNLStationid=0, x=294.46011352539, y=-1203.5991210938, z=38.902496337891, h=90.168075561523},
 	{XNLStationid=1, x=-294.76913452148, y=-303.44619750977, z=10.063159942627, h=185.19216918945},
@@ -138,218 +130,98 @@ local MetroTrainstops = {
 
 local TicketMachines = {'prop_train_ticket_02', 'prop_train_ticket_02_tu', 'v_serv_tu_statio3_'}
 local anim = "mini@atmenter"
-
+local has_loaded = false
 Citizen.CreateThread(function()
-	function LoadTrainModels() -- f*ck your rails, too!
-		tempmodel = GetHashKey("freight")
-		RequestModel(tempmodel)
-		while not HasModelLoaded(tempmodel) do
-			RequestModel(tempmodel)
-			Citizen.Wait(0)
-		end
+    function LoadTrainModels()
+        local models = {
+            "freight",
+            "freightcar",
+            "freightgrain",
+            "freightcont1",
+            "freightcont2",
+            "freighttrailer",
+            "tankercar",
+            "metrotrain",
+            "s_m_m_lsmetro_01"
+        }
 
-		tempmodel = GetHashKey("freightcar")
-		RequestModel(tempmodel)
-		while not HasModelLoaded(tempmodel) do
-			RequestModel(tempmodel)
-			Citizen.Wait(0)
-		end
+        for _, model in ipairs(models) do
+            local hash = GetHashKey(model)
+            RequestModel(hash)
 
-		tempmodel = GetHashKey("freightgrain")
-		RequestModel(tempmodel)
-		while not HasModelLoaded(tempmodel) do
-			RequestModel(tempmodel)
-			Citizen.Wait(0)
-		end
+            while not HasModelLoaded(hash) do
+                Citizen.Wait(0)
+            end
+        end
+		has_loaded = true
+        if Debug then
+            print("FiveM-Trains: Train Models Loaded")
+        end
+    end
 
-		tempmodel = GetHashKey("freightcont1")
-		RequestModel(tempmodel)
-		while not HasModelLoaded(tempmodel) do
-			RequestModel(tempmodel)
-			Citizen.Wait(0)
-		end
-
-		tempmodel = GetHashKey("freightcont2")
-		RequestModel(tempmodel)
-		while not HasModelLoaded(tempmodel) do
-			RequestModel(tempmodel)
-			Citizen.Wait(0)
-		end
-
-		tempmodel = GetHashKey("freighttrailer")
-		RequestModel(tempmodel)
-		while not HasModelLoaded(tempmodel) do
-			RequestModel(tempmodel)
-			Citizen.Wait(0)
-		end
-
-		tempmodel = GetHashKey("tankercar")
-		RequestModel(tempmodel)
-		while not HasModelLoaded(tempmodel) do
-			RequestModel(tempmodel)
-			Citizen.Wait(0)
-		end
-
-		tempmodel = GetHashKey("metrotrain")
-		RequestModel(tempmodel)
-		while not HasModelLoaded(tempmodel) do
-			RequestModel(tempmodel)
-			Citizen.Wait(0)
-		end
-
-		tempmodel = GetHashKey("s_m_m_lsmetro_01")
-		RequestModel(tempmodel)
-		while not HasModelLoaded(tempmodel) do
-			RequestModel(tempmodel)
-			Citizen.Wait(0)
-		end
-		if Debug then
-			if Debug then print("FiveM-Trains: Train Models Loaded" ) end
-		end
-	end
-
-	LoadTrainModels()
-
-	RegisterNetEvent("StartTrain")
-	function StartTrain()
-		randomSpawn = math.random(#TrainLocations)
-		x,y,z = TrainLocations[randomSpawn][1], TrainLocations[randomSpawn][2], TrainLocations[randomSpawn][3] -- get some random locations for our spawn
-
-
-		-- For those whom are interested: The yesorno variable determines the direction of the train ;)
-		yesorno = math.random(0,100)
-		if yesorno >= 50 then -- untested, but seems to work /shrug
-			yesorno = true
-		elseif yesorno < 50 then
-			yesorno = false
-		end
-
-		Wait(100)
-		Train = CreateMissionTrain(math.random(0,22), x,y,z,yesorno)
-		if Debug then print("FiveM-Trains: Train 1 created (Freight)." ) end
-		while not DoesEntityExist(Train) do
-			Wait(800)
-			if Debug then print("FiveM-Trains: Waiting for Freight to be created" ) end
-		end
-		
-		if ShowTrainBlips then
-			local TrainBlip = AddBlipForEntity(Train)      
-			SetBlipSprite (TrainBlip, 660)
-			SetBlipDisplay(TrainBlip, 4)
-			SetBlipScale  (TrainBlip, 0.8)
-			SetBlipColour (TrainBlip, 2)
-			SetBlipAsShortRange(TrainBlip, true)
-			BeginTextCommandSetBlipName("STRING")
-			AddTextComponentString("Train")
-			EndTextCommandSetBlipName(TrainBlip)
-		end
-		
-		SetTrainCruiseSpeed(Train, 20.0)
-		Wait(200) -- Added a small 'waiting' while the train is loaded (to prevent the)
-				  -- random unexplained spawning of the freight train on the Metro Rails
-
-		MetroTrain = CreateMissionTrain(24,40.2,-1201.3,31.0,true) -- these ones have pre-defined spawns since they are a pain to set up
-		if Debug then print("FiveM-Trains: Train 2 created (Metro)." ) end
-		while not DoesEntityExist(MetroTrain) do
-			Wait(800)
-			if Debug then print("FiveM-Trains: Waiting for Metro Train 1 to be created" ) end -- Also wait until the train entity has actually been created
-		end
-		
-		if ShowTrainBlips then
-			local MetroBlip = AddBlipForEntity(MetroTrain)      
-			SetBlipSprite (MetroBlip, 660)
-			SetBlipDisplay(MetroBlip, 4)
-			SetBlipScale  (MetroBlip, 0.8)
-			SetBlipColour (MetroBlip, 2)
-			SetBlipAsShortRange(MetroBlip, true)
-			BeginTextCommandSetBlipName("STRING")
-			AddTextComponentString("Metro")
-			EndTextCommandSetBlipName(MetroBlip)
-		end
-		
-		SetTrainCruiseSpeed(MetroTrain, 15.0)
-		Wait(200) -- Added a small 'waiting' while the train is loaded (to prevent the)
-				  -- random unexplained spawning of the freight train on the Metro Rails
-
-		if UseTwoMetros == 1 then
-			MetroTrain2 = CreateMissionTrain(24,-618.0,-1476.8,16.2,true)
-			if Debug then print("FiveM-Trains: Train 3 created (Metro #2)." ) end
-			while not DoesEntityExist(MetroTrain2) do
-				Wait(800)
-				if Debug then  print("FiveM-Trains: Waiting for Metro Train 2 to be created" ) end -- Also wait until the train entity has actually been created
-			end
-			if ShowTrainBlips then
-				local Metro2Blip = AddBlipForEntity(MetroTrain2)      
-				SetBlipSprite (Metro2Blip, 660)
-				SetBlipDisplay(Metro2Blip, 4)
-				SetBlipScale  (Metro2Blip, 0.8)
-				SetBlipColour (Metro2Blip, 2)
-				SetBlipAsShortRange(Metro2Blip, true)
-				BeginTextCommandSetBlipName("STRING")
-				AddTextComponentString("Metro")
-				EndTextCommandSetBlipName(Metro2Blip)
-			end
-			
-			SetTrainCruiseSpeed(MetroTrain2, 15.0)
-		end
-		Wait(200) -- Added a small 'waiting' while the train is loaded (to prevent the)
-				  -- random unexplained spawning of the freight train on the Metro Rails
-
-		TrainDriverHash = GetHashKey("s_m_m_lsmetro_01")
-
-		-- By making a refrence to the drivers we can call them further on to make them invincible for example.
-		Driver1 = CreatePedInsideVehicle(Train, 26, TrainDriverHash, -1, 1, true)
-		Driver2 = CreatePedInsideVehicle(MetroTrain, 26, TrainDriverHash, -1, 1, true)
-
-		if UseTwoMetros == 1 then
-			Driver3 = CreatePedInsideVehicle(MetroTrain2, 26, TrainDriverHash, -1, 1, true) -- create peds for the trains
-		end
-
-		--=========================================================
-		-- XNL 'Addition': This SHOULD prevent the train driver(s)
-		-- from getting shot or fleeing out of the train/tram when
-		-- being targeted by the player.
-		-- We have had several instances where the tram driver just
-		-- teleported out of the tram to attack the player when it
-		-- it was targeted (even without holding a weapon).
-		-- I suspect that this behaviour is default in the game
-		-- unless you override it.
-		--=========================================================
-		SetBlockingOfNonTemporaryEvents(driver1, true)
-		SetPedFleeAttributes(driver1, 0, 0)
-		SetEntityInvincible(driver1, true)
-		SetEntityAsMissionEntity(Driver1, true)
-
-
-		SetBlockingOfNonTemporaryEvents(Driver3, true)
-		SetPedFleeAttributes(Driver3, 0, 0)
-		SetEntityInvincible(Driver3, true)
-		SetEntityAsMissionEntity(Driver3, true)
-
-		SetEntityAsMissionEntity(Train,true,true) -- dunno if this does anything, just throwing it in for good measure
-		SetEntityAsMissionEntity(MetroTrain,true,true)
-
-		SetEntityInvincible(Train, true)
-		SetEntityInvincible(MetroTrain, true)
-
-		if UseTwoMetros == 1 then
-			SetBlockingOfNonTemporaryEvents(Driver2, true)
-			SetPedFleeAttributes(Driver2, 0, 0)
-			SetEntityInvincible(Driver2, true)
-			SetEntityAsMissionEntity(Driver2, true)
-			SetEntityAsMissionEntity(MetroTrain2,true,true)
-			SetEntityInvincible(MetroTrain2, true)
-		end
-
-		-- Cleanup from memory
-		SetModelAsNoLongerNeeded(TrainDriverHash)
-
-		if Debug then print("FiveM-Trains: Train System Started, you are currently 'host' for the trains." ) end
-	end
-
-	AddEventHandler("StartTrain", StartTrain)
-	EverythingisK = true -- Added this because the Event isn't fully registered when the Event PlayerSpawned trigger.
+    LoadTrainModels()
 end)
+
+
+
+
+	local function CreateTrain(model, x, y, z, blipSprite, cruiseSpeed, isMetro)
+		local train = CreateMissionTrain(model, x, y, z, isMetro)
+		
+		while not DoesEntityExist(train) do
+			Wait(800)
+		end
+	
+		if ShowTrainBlips then
+			local trainBlip = AddBlipForEntity(train)
+			SetBlipSprite(trainBlip, blipSprite)
+			-- Add other blip settings here
+		end
+	
+		SetTrainCruiseSpeed(train, cruiseSpeed)
+	
+		local driver = CreatePedInsideVehicle(train, 26, GetHashKey("s_m_m_lsmetro_01"), -1, 1, true)
+	
+		return train, driver
+	end
+	local has_spawned = false
+	Citizen.CreateThread(function()
+		RegisterNetEvent("StartTrain")
+		AddEventHandler("StartTrain", function()
+			local randomSpawn = math.random(#TrainLocations)
+			local x, y, z = TrainLocations[randomSpawn][1], TrainLocations[randomSpawn][2], TrainLocations[randomSpawn][3]
+			local yesorno = math.random(0, 100) >= 50
+			Wait(100)
+			while not has_spawned do 
+				if has_loaded then 
+					local freightTrain, freightDriver = CreateTrain(math.random(0, 22), x, y, z, 660, 20.0, yesorno)
+					if Debug then
+						print("FiveM-Trains: Train 1 created (Freight).")
+					end
+					local metroTrain, metroDriver = CreateTrain(24, 40.2, -1201.3, 31.0, 660, 15.0, true)
+					if Debug then
+						print("FiveM-Trains: Train 2 created (Metro).")
+					end
+			
+					if UseTwoMetros == 1 then
+						local metroTrain2, metroDriver2 = CreateTrain(24, -618.0, -1476.8, 16.2, 660, 15.0, true)
+						if Debug then
+							print("FiveM-Trains: Train 3 created (Metro #2).")
+						end
+					end
+					has_spawned = true
+				else
+					Wait(500)
+				end
+				if Debug then
+					print("FiveM-Trains: Train System Started, you are currently 'host' for the trains.")
+				end
+			end
+		end)
+	
+		EverythingisK = true
+	end)
+	
 
 Citizen.CreateThread(function()
 	ShowedBuyTicketHelper = false
@@ -371,7 +243,7 @@ Citizen.CreateThread(function()
 
 			if IsControlJustPressed(0, 51) and PlayerHasMetroTicket then
 				SMS_Message("CHAR_LS_TOURIST_BOARD", Message[Language]['los_santos_transit'], Message[Language]['tourist_information'], Message[Language]['already_got_ticket'], true)
-				Wait(3500) -- To avoid people 'spamming themselves' with the message popup (3500ms is 'just enough' to take the fun out of it :P)
+				Wait(3500) 
 			end
 
 			if IsControlJustPressed(0, 51) and not PlayerHasMetroTicket then
@@ -402,21 +274,9 @@ Citizen.CreateThread(function()
 				TaskPlayAnim(playerPed, "mini@atmexit", "exit", 8.0, 1.0, -1, 0, 0.0, 0, 0, 0)
 				RemoveAnimDict("mini@atmexit")
 				Wait(500)
-
-				--=====================================================================================
-				-- Put here the actual 'reader'/function that your server uses
-				-- to calculate/get the players bank account saldo and cash money!
-				-- Now they are just set 'hardcoded' to an high amount to make the
-				-- script work for people whom don't read a single line of code
-				-- and then instantly post "Hey, i can't even buy a ticket, the script is broken" :P
-				--
-				-- Nope it's NOT broken, it just needs a BIT of adapting to your server and it's
-				-- money handling. Since we use a custom banking system we have much different calls
-				-- than others might have so i've decided to put it in here like this so that it
-				-- functions for everyone when they want to test/try the script :)
-				--=====================================================================================
-				BankAmount = 10000    --StatGetInt("BANK_BALANCE",-1)
-				PlayerCashAm = 10000  --StatGetInt("MP0_WALLET_BALANCE",-1)
+-------------------------------------------------------
+				BankAmount = 10000    
+				PlayerCashAm = 10000  
 
 				if PayWithBank == 1 then
 					XNLUserMoney = BankAmount
@@ -424,36 +284,27 @@ Citizen.CreateThread(function()
 					XNLUserMoney = PlayerCashAm
 				end
 
-				--===================================================================
-				-- Please note, that despite if you make your players pay with
-				-- cash or by bank, it will always show the selected bank popup
-				-- if the player doesn't have enough cash (this is NOT a bug!)
-				-- if you want/need it differently you can adapt the code bellow ;)
-				--==================================================================
 				if XNLUserMoney < TicketPrice then
-					if UserBankIDi == 1 then		  		-- Maze Bank
+					if UserBankIDi == 1 then		  	
 						BankIcon = "CHAR_BANK_MAZE"
 						BankName = "Maze Bank"
 					end
-					if UserBankIDi == 2 then				-- Bank Of Liberty
+					if UserBankIDi == 2 then			
 						BankIcon = "CHAR_BANK_BOL"
 						BankName = "Bank Of Liberty"
 					end
 
-					if UserBankIDi == 3 then		  		-- Fleeca (Default Fallback to!)
+					if UserBankIDi == 3 then		  		
 						BankIcon = "CHAR_BANK_FLEECA"
 						BankName = "Fleeca Bank"
 					end
 					SMS_Message(BankIcon, BankName, Message[Language]['account_information'], Message[Language]['account_nomoney'], true)
 				else
 					if PayWithBank == 1 then
-						-- Put YOUR code to deduct the amount from the players BANK account here
-						-- 'Basic Example':  PlayerBankMoney = PlayerBankMoney - TicketPrice
-					else
-						-- Put YOUR code to deduct the amount from the players CASH money account here
-						-- 'Basic Example':  PlayerCash = PlayerCash - TicketPrice
-					end
 
+					else
+					end
+-----------------------------------------------------------
 					SMS_Message("CHAR_LS_TOURIST_BOARD", Message[Language]['los_santos_transit'], Message[Language]['tourist_information'], Message[Language]['ticket_purchased'], true)
 					PlayerHasMetroTicket = true
 				end
@@ -463,11 +314,6 @@ Citizen.CreateThread(function()
 		else
 			ShowedBuyTicketHelper = false
 		end
-
-
-
-		-- E/Action key (There will only be checked for trains when the player presses the action key)
-		-- This Section is used to ENTER the Metro
 		if IsControlJustPressed(0, 51) then
 			playerPed = PlayerPedId()
 			x,y,z = table.unpack(GetEntityCoords(playerPed, true))
@@ -479,7 +325,7 @@ Citizen.CreateThread(function()
 					if not XNLTeleportPlayerToNearestMetroExit() then
 						SMS_Message("CHAR_LS_TOURIST_BOARD", Message[Language]['los_santos_transit'], Message[Language]['tourist_information'], Message[Language]['stop_toolate'], true)
 					end
-					SkipReEnterCheck = true -- This variable is used to prevent the character from directly trying to re-enter the Metro after leaving it.
+					SkipReEnterCheck = true 
 				else
 					XNLGenMess = "Sir"
 					if XNLIsPedFemale(playerPed) then
@@ -488,11 +334,6 @@ Citizen.CreateThread(function()
 					SMS_Message("CHAR_LS_TOURIST_BOARD", Message[Language]['los_santos_transit'], Message[Language]['tourist_information'], Message[Language]['sorry'].." "..Message[Language][XNLGenMess].." "..Message[Language]['exit_metro_random'], true)
 				end
 			end
-
-			--===============================================
-			-- Make sure the player is NOT in a vehicle and
-			-- NOT already on the Metro
-			--===============================================
 			if not IsPlayerNearMetro and not IsPlayerInMetro and not SkipReEnterCheck then
 				if not IsPlayerInVehicle then
 					local coordA = GetEntityCoords(GetPlayerPed(-1), 1)
@@ -501,17 +342,9 @@ Citizen.CreateThread(function()
 					if DoesEntityExist(Metro) then
 						if GetEntityModel(Metro) == GetHashKey("metrotrain") then
 							if not PlayerHasMetroTicket	then
-									--==========================================================================
-									-- Notify the player he/she needs to buy a ticket before entering the metro
-									--==========================================================================
 									SMS_Message("CHAR_LS_TOURIST_BOARD", Message[Language]['los_santos_transit'], Message[Language]['tourist_information'], Message[Language]['need_ticket'], true)
 							else
 								if IsPlayerWantedLevelGreater(PlayerId(), 0) and AllowEnterTrainWanted == 0 then
-									--==========================================================================
-									-- If the player's wanted level is greater than 0, he/she will be
-									-- denied to ENTER the Metro.
-									-- If he/she GETS WHILE wanted on the train, we will handle that furher on
-									--==========================================================================
 									SMS_Message("CHAR_LS_TOURIST_BOARD", Message[Language]['los_santos_transit'], Message[Language]['tourist_information'], Message[Language]['have_wantedlevel'], true)
 								else
 									CurrentMetro = Metro
@@ -545,10 +378,6 @@ Citizen.CreateThread(function()
 			end
 		end
 
-
-		--=============================================================
-		-- Check if the player is in the Metro AND pressed the [E] key
-		--=============================================================
 		if IsPlayerInMetro then
 			if ReportTerroristOnMetro == true then
 				if GetPlayerWantedLevel(PlayerId()) < 4 then
@@ -561,22 +390,16 @@ Citizen.CreateThread(function()
 			end
 
 			if not DoesEntityExist(CurrentMetro) then
-				-- Not ANY clue on when this might happen haha, but it's a funny message and error handler in one :Phone_SoundSet_Default
-				-- we have seen it happen once or so in MANY test rounds of the metro system that the metro just vanished, so this is to
-				-- 'encounter' that POSSIBLE issue (which I presume has to do with de-syncing or so)
 				IsPlayerNearMetro = false
 				IsPlayerInMetro = false
 				PlayerHasMetroTicket = true
 				SMS_Message("CHAR_LS_TOURIST_BOARD", Message[Language]['los_santos_transit'], Message[Language]['tourist_information'], Message[Language]['no_metro_spawned'], true)
 			else
 				if IsPlayerInMetro then
-					-- This will ensure that it will only show the 'how to leave metro' text while near/at a station
 					if ShowingExitMetroMessage == true and not ShowedLeaveMetroHelper then
 						DisplayHelpText("Press ~INPUT_CONTEXT~ to leave the metro")
 						ShowedLeaveMetroHelper = true
 					end
-
-					-- This part detects if the player is further away than 15.0 units from the Metro he/she used
 					MetroX, MetroY, MetroZ = table.unpack(GetOffsetFromEntityInWorldCoords(CurrentMetro, 0.0, 0.0, 0.0))
 					x,y,z = table.unpack(GetEntityCoords(playerPed, true))
 					if GetDistanceBetweenCoords(x,y,z, MetroX, MetroY, MetroZ, true) > 15.0 then
@@ -593,233 +416,189 @@ Citizen.CreateThread(function()
 end)
 
 Citizen.CreateThread(function()
-	--=======================================================================================
-	-- Note only do this 'check' every 550ms to prevent
-	-- to much load in the game (taking in account many other scripts also running of course)
-	--=======================================================================================
-	ShowedEToEnterMetro = false
-	while true do
-		Wait(550)
-		if IsPlayerInMetro then
-			if XNLCanPlayerExitTrain() then
-				ShowingExitMetroMessage = true
-			else
-				ShowingExitMetroMessage = false
-				ShowedLeaveMetroHelper = false
-			end
-			ShowedEToEnterMetro = false
-		end
+    local ShowedEToEnterMetro = false
+    local IsPlayerNearTicketMachine = false
+    local currentTicketMachine = nil
 
-		-- We only have to check this part if the player is NOT on the metro.
-		if not IsPlayerInMetro then
-			playerPed = PlayerPedId()
-			IsPlayerInVehicle = IsPedInAnyVehicle(playerPed, true)
+    while true do
+        Wait(550)
 
-			-- And then ONLY check it if the player isn't in a vehicle either
-			-- Note: The way i'm using the metro, the game doesn't recognize it as being
-			-- on/in a vehicle.
-			if not IsPlayerInVehicle then
+        if IsPlayerInMetro then
+            ShowingExitMetroMessage = XNLCanPlayerExitTrain()
+            ShowedEToEnterMetro = false
+        end
 
-				-- Yes, yes I know, the function is called 'XNLCanPlayerEXITTrain', but it
-				-- is also used to detect if the player is at one of the stations on foot :)
-				if PlayerHasMetroTicket and XNLCanPlayerExitTrain() then
-					if not ShowedEToEnterMetro then
-						DisplayHelpText(Message[Language]['press_to_enter'])
-						ShowedEToEnterMetro = true
-					end
-				else
-					ShowedEToEnterMetro = false
-				end
+        if not IsPlayerInMetro then
+            local playerPed = PlayerPedId()
+            local IsPlayerInVehicle = IsPedInAnyVehicle(playerPed, true)
 
-				-- Only show the "Press [E] to buy...." message near the ticket machine if the player does NOT own a ticket already
-				-- Do note that it IS possible to 'activate' the ticket machine again though (but will give a different message ;) )
-				x,y,z = table.unpack(GetEntityCoords(playerPed, true))
-				-- And then only need to keep checking (scanning cords) if the player is not near the Ticket Machine (anymore)
-				if not IsPlayerNearTicketMachine then
-					for k,v in pairs(TicketMachines) do
-						TicketMachine = GetClosestObjectOfType(x, y, z, 0.75, GetHashKey(v), false)
-						if DoesEntityExist(TicketMachine) then
-							currentTicketMachine = TicketMachine
-							TicketMX, TicketMY, TicketMZ = table.unpack(GetOffsetFromEntityInWorldCoords(TicketMachine, 0.0, -.85, 0.0))
-							IsPlayerNearTicketMachine = true
-						end
-					end
-				else
-					if not DoesEntityExist(currentTicketMachine) then
-						IsPlayerNearTicketMachine = false -- If for some (weird) reasons the ticked machine (suddenly)
-					else								  --doesn't exist anymore, tell the script that the player isn't near one anymore
-						if GetDistanceBetweenCoords(x,y,z, TicketMX, TicketMY, TicketMZ, true) > 2.0 then
-							IsPlayerNearTicketMachine = false -- And do the same if the player is more than a radius of 2.0 away from the ticket machine
-						end
-					end
-				end
-			end
-		end
-	end
+            if not IsPlayerInVehicle then
+                if PlayerHasMetroTicket and XNLCanPlayerExitTrain() then
+                    if not ShowedEToEnterMetro then
+                        DisplayHelpText(Message[Language]['press_to_enter'])
+                        ShowedEToEnterMetro = true
+                    end
+                else
+                    ShowedEToEnterMetro = false
+                end
+
+                local x, y, z = table.unpack(GetEntityCoords(playerPed, true))
+
+                if not IsPlayerNearTicketMachine then
+                    for k, v in pairs(TicketMachines) do
+                        local ticketMachine = GetClosestObjectOfType(x, y, z, 0.75, GetHashKey(v), false)
+                        if DoesEntityExist(ticketMachine) then
+                            currentTicketMachine = ticketMachine
+                            local ticketMX, ticketMY, ticketMZ = table.unpack(GetOffsetFromEntityInWorldCoords(ticketMachine, 0.0, -.85, 0.0))
+                            IsPlayerNearTicketMachine = true
+                        end
+                    end
+                else
+                    if not DoesEntityExist(currentTicketMachine) or GetDistanceBetweenCoords(x, y, z, TicketMX, TicketMY, TicketMZ, true) > 2.0 then
+                        IsPlayerNearTicketMachine = false
+                    end
+                end
+            end
+        end
+    end
 end)
 
--- This is the function which is used to display 'SMS Style messages'
--- If you need more/other icons to display, then make sure to check out:
--- https://wiki.gtanet.work/index.php?title=Notification_Pictures
--- YES YES, I KNOW! it's 'a competitor' :P but it's definitly a good
--- resource for fellow modders :)
+
 function SMS_Message(NotiPic, SenderName, Subject, MessageText, PlaySound)
     SetNotificationTextEntry("STRING")
     AddTextComponentString(MessageText)
     SetNotificationBackgroundColor(140)
     SetNotificationMessage(NotiPic, NotiPic, true, 4, SenderName, Subject, MessageText)
     DrawNotification(false, true)
-	if PlaySound then
-		PlaySoundFrontend(GetSoundId(), "Text_Arrive_Tone", "Phone_SoundSet_Default", true)
-	end
+    if PlaySound then
+        PlaySoundFrontend(GetSoundId(), "Text_Arrive_Tone", "Phone_SoundSet_Default", true)
+    end
 end
 
--- This is the text 'helper' which is used at the top left for messages like 'Press [E] to buy ticket ($25)'
 function DisplayHelpText(str)
-	SetTextComponentFormat("STRING")
-	AddTextComponentString(str)
-	DisplayHelpTextFromStringLabel(0, 0, 1, -1)
-	EndTextCommandDisplayHelp(0, 0, true, 2000)
+    SetTextComponentFormat("STRING")
+    AddTextComponentString(str)
+    DisplayHelpTextFromStringLabel(0, 0, 1, -1)
+    EndTextCommandDisplayHelp(0, 0, true, 2000)
 end
 
--- Using a RayCast to detect if the player is trying to get into the train
--- This is needed since it's not possible (yet) to detect the train model with
--- the normal native calls
 function getVehicleInDirection(coordFrom, coordTo)
-	local rayHandle = CastRayPointToPoint(coordFrom.x, coordFrom.y, coordFrom.z, coordTo.x, coordTo.y, coordTo.z, 10, GetPlayerPed(-1), 0)
-	local a, b, c, d, vehicle = GetRaycastResult(rayHandle)
-	return vehicle
+    local rayHandle = CastRayPointToPoint(coordFrom.x, coordFrom.y, coordFrom.z, coordTo.x, coordTo.y, coordTo.z, 10, GetPlayerPed(-1), 0)
+    local _, _, _, _, vehicle = GetRaycastResult(rayHandle)
+    return vehicle
 end
 
-
---==============================================
--- Simple yet effective function to check if
--- player is female or male (sine we only use
--- mp_f_freemode_01 and mp_m_freemode_01 on our
--- server) We need(ed) this function because for
--- some weird reason IsPedMale had some issues
--- with some scripts.
---==============================================
 function XNLIsPedFemale(ped)
-	if IsPedModel(ped, 'mp_f_freemode_01') then
-		return true
-	else
-		return false
-	end
+    return IsPedModel(ped, 'mp_f_freemode_01')
 end
 
 function XNLCanPlayerExitTrain()
-	playerPed = PlayerPedId()
-	for _, item in pairs(XNLMetroScanPoints) do
-		Px,Py,Pz = table.unpack(GetEntityCoords(playerPed, true))
-		if GetDistanceBetweenCoords(Px,Py,Pz, item.x, item.y, item.z, true) < StationsExitScanRadius then
-			return true -- The function DID detected the player within one of the radius markers at the stations
-		end
-	end
-	return false -- The function did NOT detected the player within one of the radius markers at the stations
+    local playerPed = PlayerPedId()
+    local playerCoords = GetEntityCoords(playerPed, true)
+    for _, item in pairs(XNLMetroScanPoints) do
+        if GetDistanceBetweenCoords(playerCoords.x, playerCoords.y, playerCoords.z, item.x, item.y, item.z, true) < StationsExitScanRadius then
+            return true
+        end
+    end
+    return false
 end
 
 function XNLTeleportPlayerToNearestMetroExit()
-	playerPed = PlayerPedId()
-	for _, item in pairs(XNLMetroScanPoints) do
-		Px,Py,Pz = table.unpack(GetEntityCoords(playerPed, true))
-		if GetDistanceBetweenCoords(Px,Py,Pz, item.x, item.y, item.z, true) < StationsExitScanRadius then
-			for _, item2 in pairs(XNLMetroEXITPoints) do
-				if item.XNLStationid == item2.XNLStationid  then
-					DoScreenFadeOut(800)
-					while not IsScreenFadedOut() do
-						Wait(10)
-					end
-					XNLNewX = item2.x -- The 'new' Player X position
-					XNLNewY = item2.y -- The 'new' Player Y position
-					XNLNewZ = item2.z -- The 'new' Player Z position
-					XNLNewH = item2.h -- The 'new' Player Heading Direction
+    local playerPed = PlayerPedId()
+    local playerCoords = GetEntityCoords(playerPed, true)
+    for _, item in pairs(XNLMetroScanPoints) do
+        if GetDistanceBetweenCoords(playerCoords.x, playerCoords.y, playerCoords.z, item.x, item.y, item.z, true) < StationsExitScanRadius then
+            for _, item2 in pairs(XNLMetroEXITPoints) do
+                if item.XNLStationid == item2.XNLStationid then
+                    DoScreenFadeOut(800)
+                    while not IsScreenFadedOut() do
+                        Wait(10)
+                    end
 
-					SetEntityCoordsNoOffset(PlayerPedId(), XNLNewX, XNLNewY, XNLNewZ)
-					SetEntityHeading(PlayerPedId(), XNLNewH)
+                    SetEntityCoordsNoOffset(PlayerPedId(), item2.x, item2.y, item2.z)
+                    SetEntityHeading(PlayerPedId(), item2.h)
 
-					DoScreenFadeIn(800)
-					while not IsScreenFadedIn() do
-						Wait(10)
-					end
-					return true
-				end
-			end
-		end
-	end
-	return false -- The function did NOT detected the player within one of the radius markers at the stations
+                    DoScreenFadeIn(800)
+                    while not IsScreenFadedIn() do
+                        Wait(10)
+                    end
+                    return true
+                end
+            end
+        end
+    end
+    return false
 end
+
 
 Citizen.CreateThread(function()
-	while EverythingisK == false do Citizen.Wait(0) end
-	while true do
-		Citizen.Wait(0)
-		local closest = 10
-		if DoesEntityExist(MetroTrain) then
-			if not MetroTrainStopped[MetroTrain] then
-				local coords = GetEntityCoords(MetroTrain)
-				if coords then
-					for k,v in ipairs(MetroTrainstops) do
-						if GetDistanceBetweenCoords(coords, v.x, v.y, v.z, true) <= closest then
-							StopTrain(MetroTrain)
-						end
-					end
-				end
-			end
-		end
-		if DoesEntityExist(MetroTrain2) then
-			if not MetroTrainStopped[MetroTrain2] then
-				local coords = GetEntityCoords(MetroTrain2)
-				if coords then
-					for k,v in ipairs(MetroTrainstops) do
-						if GetDistanceBetweenCoords(coords, v.x, v.y, v.z, true) <= closest then
-							StopTrain(MetroTrain2)
-						end
-					end
-				end
-			end
-		end
-	end
+    while not EverythingisK do
+        Citizen.Wait(0)
+    end
+
+    while true do
+        Citizen.Wait(0)
+
+        local closest = 10
+
+        CheckAndStopTrain(MetroTrain)
+        CheckAndStopTrain(MetroTrain2)
+    end
 end)
 
-function StopTrain(train)
-	if (NetworkHasControlOfEntity(train)) then
-		table.insert(MetroTrainStopped, train) 
-		SetTrainCruiseSpeed(train, 0.0) -- We stop the train
-		Citizen.Wait(100)
-		if train ~= nil then
-			local stoppedTimer = GetGameTimer();
-			repeat 
-				Citizen.Wait(0)
-			until GetEntitySpeed(train) <= 0
-			while (GetGameTimer() - stoppedTimer < (20 * 1000)) do -- We stop the train for 20 sec. With a Citizen.wait, our variable is destroyed. So we need to keep up.
-				Citizen.Wait(0)
-			end
-		end
-		Citizen.Wait(100)
-		SetTrainCruiseSpeed(train, 15.0) -- Bye bye train !
-		local timer = GetGameTimer();
-		while (GetGameTimer() - timer < 5000) do -- After 5 sec, we can tell that train have "finished" their stop.
-			removebyKey(MetroTrainStopped, train)
-			Citizen.Wait(0)
-		end
-	end
+function CheckAndStopTrain(train)
+    if DoesEntityExist(train) and not MetroTrainStopped[train] then
+        local coords = GetEntityCoords(train)
+        if coords then
+            for _, stop in ipairs(MetroTrainstops) do
+                if GetDistanceBetweenCoords(coords, stop.x, stop.y, stop.z, true) <= closest then
+                    StopTrain(train)
+                end
+            end
+        end
+    end
 end
 
--- Added for OneSync
-local firstspawn = 0 -- By default, Its the first spawn of the player. So, I don't recommend to restart the script with already player in the server.
+
+function StopTrain(train)
+    if NetworkHasControlOfEntity(train) then
+        table.insert(MetroTrainStopped, train)
+        SetTrainCruiseSpeed(train, 0.0)
+
+        local stoppedTimer = GetGameTimer()
+        repeat
+            Citizen.Wait(0)
+        until GetEntitySpeed(train) <= 0
+
+        local stopDuration = 20 * 1000 -- 20 seconds
+        local waitDuration = 5000 -- 5 seconds
+
+        local elapsed = 0
+        while elapsed < stopDuration do
+            Citizen.Wait(0)
+            elapsed = GetGameTimer() - stoppedTimer
+        end
+
+        SetTrainCruiseSpeed(train, 15.0)
+
+        local timer = GetGameTimer()
+        while GetGameTimer() - timer < waitDuration do
+            removebyKey(MetroTrainStopped, train)
+            Citizen.Wait(0)
+        end
+    end
+end
+
+
+local firstspawn = 0 
 
 AddEventHandler('playerSpawned', function()
-	while EverythingisK == false do Citizen.Wait(0) end -- The Event "StartTrain" is fully registered. We can continue now.
-	if firstspawn == 0 then -- First spawn of the player ? Check if they are already trains
+	while EverythingisK == false do Citizen.Wait(0) end 
+	if firstspawn == 0 then 
 		TriggerServerEvent('FiveM-Trains:PlayerSpawned')
-		firstspawn = 1 -- Just for making not trigger the event if he respawn after die.
+		firstspawn = 1 
 	end
 end)
-
--- This is added if we restart the ressource.
--- Needed for the dev. May be I will remove it later.
--- This remove all train
 AddEventHandler('onResourceStop', function(resourceName)
 	if (GetCurrentResourceName() ~= resourceName) then
 		return
